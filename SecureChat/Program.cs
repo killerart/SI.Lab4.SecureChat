@@ -1,8 +1,7 @@
 using System;
-using System.IO;
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.SignalR.Client;
@@ -27,6 +26,11 @@ namespace SecureChat {
                                      .WithUrl($"{userAddress}/chat")
                                      .Build();
                     var des = DES.Create();
+                    Console.CancelKeyPress += async (sender, eventArgs) => {
+                        await connection.StopAsync();
+                        des.Dispose();
+                        Process.GetCurrentProcess().Kill();
+                    };
 
                     connection.On<byte[]>("SendPublicKey",
                                           async publicKey => {

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR;
 
@@ -31,10 +32,13 @@ namespace SecureChat.Hubs {
 
             Console.WriteLine("Key exchange successful");
 
+            var tokenSource = new CancellationTokenSource();
+            SetTokenSource(tokenSource);
+
             Task.Run(async () => {
-                while (true) {
+                while (!tokenSource.IsCancellationRequested) {
                     Console.Write("Input message: ");
-                    var message          = Console.ReadLine()!;
+                    var message = Console.ReadLine()!;
                     var encryptedMessage = des.EncryptEcb(Encoding.Default.GetBytes(message), PaddingMode.Zeros);
                     await _context.Clients.Client(connectionId).SendMessage(encryptedMessage);
                 }
@@ -66,23 +70,41 @@ namespace SecureChat.Hubs {
                 // ignored
             }
 
+            try {
+                var tokenSource = GetTokenSource();
+                tokenSource.Cancel();
+                tokenSource.Dispose();
+            } catch (Exception) {
+                // ignored
+            }
+
+            Console.WriteLine($"\nClient {Context.ConnectionId} disconnected, press ENTER to wait for new connections");
+
             return Task.CompletedTask;
         }
 
         private RSA GetRsa() {
-            return Context.Items["RSA"] as RSA ?? throw new Exception();
-        }
-
-        private DES GetDes() {
-            return Context.Items["DES"] as DES ?? throw new Exception();
+            return (RSA)Context.Items["RSA"]!;
         }
 
         private void SetRsa(RSA rsa) {
             Context.Items["RSA"] = rsa;
         }
 
+        private DES GetDes() {
+            return (DES)Context.Items["DES"]!;
+        }
+
         private void SetDes(DES des) {
             Context.Items["DES"] = des;
+        }
+
+        private void SetTokenSource(CancellationTokenSource tokenSource) {
+            Context.Items["tokenSource"] = tokenSource;
+        }
+
+        private CancellationTokenSource GetTokenSource() {
+            return (CancellationTokenSource)Context.Items["tokenSource"]!;
         }
     }
 }
