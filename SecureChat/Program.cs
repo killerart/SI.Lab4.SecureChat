@@ -22,15 +22,18 @@ namespace SecureChat {
             } else {
                 try {
                     var keyExchangeTask = new TaskCompletionSource();
-                    var connection = new HubConnectionBuilder()
-                                     .WithUrl($"{userAddress}/chat")
-                                     .Build();
+                    await using var connection = new HubConnectionBuilder()
+                                                 .WithUrl($"{userAddress}/chat")
+                                                 .Build();
                     var des = DES.Create();
-                    Console.CancelKeyPress += async (sender, eventArgs) => {
-                        await connection.StopAsync();
+
+                    void OnCancelKeyPress(object? sender, ConsoleCancelEventArgs e) {
                         des.Dispose();
+                        connection.DisposeAsync().AsTask().Wait();
                         Process.GetCurrentProcess().Kill();
-                    };
+                    }
+
+                    Console.CancelKeyPress += OnCancelKeyPress;
 
                     connection.On<byte[]>("SendPublicKey",
                                           async publicKey => {
@@ -52,7 +55,8 @@ namespace SecureChat {
                                           });
 
                     connection.Closed += _ => {
-                        des.Dispose();
+                        Console.WriteLine("\nClient disconnected");
+                        OnCancelKeyPress(null, null!);
                         return Task.CompletedTask;
                     };
 
