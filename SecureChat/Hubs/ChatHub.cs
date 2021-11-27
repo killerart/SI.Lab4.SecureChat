@@ -1,7 +1,12 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR;
 
@@ -23,7 +28,6 @@ namespace SecureChat.Hubs {
         }
 
         public void SendSymmetricKey(byte[] encryptedSymmetricKey) {
-            var connectionId = Context.ConnectionId;
             var rsa          = GetRsa();
             var symmetricKey = rsa.Decrypt(encryptedSymmetricKey, RSAEncryptionPadding.Pkcs1);
             var des          = DES.Create();
@@ -31,18 +35,35 @@ namespace SecureChat.Hubs {
             SetDes(des);
 
             Console.WriteLine("Key exchange successful");
+        }
 
-            var tokenSource = new CancellationTokenSource();
-            SetTokenSource(tokenSource);
-
-            Task.Run(async () => {
-                while (!tokenSource.IsCancellationRequested) {
+        public async Task SendMessages(IAsyncEnumerable<byte[]> messageStream) {
+            var des = GetDes();
+            try {
+                await foreach (var encryptedMessage in messageStream.Skip(1)) {
+                    var messageBytes = des.DecryptEcb(encryptedMessage, PaddingMode.None);
+                    var message      = Encoding.Default.GetString(messageBytes);
+                    Console.Write("\nMessage received: ");
+                    Console.WriteLine(message);
                     Console.Write("Input message: ");
-                    var message = Console.ReadLine()!;
-                    var encryptedMessage = des.EncryptEcb(Encoding.Default.GetBytes(message), PaddingMode.Zeros);
-                    await _context.Clients.Client(connectionId).SendMessage(encryptedMessage);
                 }
-            });
+            } catch (Exception) {
+                // ignored
+            }
+
+            Console.WriteLine($"\nClient {Context.ConnectionId} disconnected, press ENTER to wait for new connections");
+        }
+
+        public async IAsyncEnumerable<byte[]> ReceiveMessages([EnumeratorCancellation] CancellationToken cancellationToken) {
+            await using var inputStream = Console.OpenStandardInput();
+            using var       reader      = new StreamReader(inputStream);
+            var             des         = GetDes();
+            while (!cancellationToken.IsCancellationRequested) {
+                Console.Write("Input message: ");
+                var message          = (await reader.ReadLineAsync())!;
+                var encryptedMessage = des.EncryptEcb(Encoding.Default.GetBytes(message), PaddingMode.Zeros);
+                yield return encryptedMessage;
+            }
         }
 
         public Task SendMessage(byte[] encryptedMessage) {
@@ -70,16 +91,6 @@ namespace SecureChat.Hubs {
                 // ignored
             }
 
-            try {
-                var tokenSource = GetTokenSource();
-                tokenSource.Cancel();
-                tokenSource.Dispose();
-            } catch (Exception) {
-                // ignored
-            }
-
-            Console.WriteLine($"\nClient {Context.ConnectionId} disconnected, press ENTER to wait for new connections");
-
             return Task.CompletedTask;
         }
 
@@ -97,14 +108,6 @@ namespace SecureChat.Hubs {
 
         private void SetDes(DES des) {
             Context.Items["DES"] = des;
-        }
-
-        private void SetTokenSource(CancellationTokenSource tokenSource) {
-            Context.Items["tokenSource"] = tokenSource;
-        }
-
-        private CancellationTokenSource GetTokenSource() {
-            return (CancellationTokenSource)Context.Items["tokenSource"]!;
         }
     }
 }
