@@ -11,62 +11,59 @@ using SecureChat.Hubs;
 
 namespace SecureChat {
     class Program {
-        public static readonly CancellationTokenSource TokenSource = new();
-
         public static async Task Main(string[] args) {
-            var builder = WebApplication.CreateBuilder(args);
-            builder.Services.AddSignalR();
-            var app = builder.Build();
-            app.MapHub<ChatHub>("/chat");
-            var appTask = app.RunAsync();
+            Console.WriteLine("Input user address to connect to him or the word 'wait' to wait for connections:");
+            var userAddress = Console.ReadLine()!;
+            if (userAddress.Equals("wait", StringComparison.OrdinalIgnoreCase)) {
+                var builder = WebApplication.CreateBuilder(args);
+                builder.Services.AddSignalR();
+                var app = builder.Build();
+                app.MapHub<ChatHub>("/chat");
+                await app.RunAsync();
+            } else {
+                try {
+                    var keyExchangeTask = new TaskCompletionSource();
+                    var connection = new HubConnectionBuilder()
+                                     .WithUrl($"{userAddress}/chat")
+                                     .Build();
+                    var des = DES.Create();
 
-            try {
-                Console.Write("Input user address: ");
-                await using var inputStream = Console.OpenStandardInput();
-                using var       reader      = new StreamReader(inputStream);
-                var             userAddress = await reader.ReadLineAsync().WaitAsync(TokenSource.Token);
-                var connection = new HubConnectionBuilder()
-                                 .WithUrl($"{userAddress!}/chat")
-                                 .Build();
-                var des = DES.Create();
-
-                connection.On<byte[]>("SendPublicKey",
-                                      async publicKey => {
-                                          using var rsa = RSA.Create();
-                                          rsa.ImportRSAPublicKey(publicKey, out _);
-                                          var encryptedKey = rsa.Encrypt(des.Key, RSAEncryptionPadding.Pkcs1);
-                                          Console.WriteLine("Sending DES encrypted private key");
-                                          await connection.InvokeAsync("SendSymmetricKey", encryptedKey);
-                                          Task.Run(async () => {
-                                              while (true) {
-                                                  Console.Write("Input message: ");
-                                                  var message          = Console.ReadLine()!;
-                                                  var encryptedMessage = des.EncryptEcb(Encoding.Default.GetBytes(message), PaddingMode.Zeros);
-                                                  await connection.InvokeAsync("SendMessage", encryptedMessage);
-                                              }
+                    connection.On<byte[]>("SendPublicKey",
+                                          async publicKey => {
+                                              using var rsa = RSA.Create();
+                                              rsa.ImportRSAPublicKey(publicKey, out _);
+                                              var encryptedKey = rsa.Encrypt(des.Key, RSAEncryptionPadding.Pkcs1);
+                                              Console.WriteLine("Sending DES encrypted private key");
+                                              await connection.InvokeAsync("SendSymmetricKey", encryptedKey);
+                                              keyExchangeTask.SetResult();
                                           });
-                                      });
 
-                connection.On<byte[]>("SendMessage",
-                                      encryptedMessage => {
-                                          var messageBytes = des.DecryptEcb(encryptedMessage, PaddingMode.None);
-                                          var message      = Encoding.Default.GetString(messageBytes);
-                                          Console.Write("\nMessage received: ");
-                                          Console.WriteLine(message);
-                                          Console.Write("Input message: ");
-                                      });
+                    connection.On<byte[]>("SendMessage",
+                                          encryptedMessage => {
+                                              var messageBytes = des.DecryptEcb(encryptedMessage, PaddingMode.None);
+                                              var message      = Encoding.Default.GetString(messageBytes);
+                                              Console.Write("\nMessage received: ");
+                                              Console.WriteLine(message);
+                                              Console.Write("Input message: ");
+                                          });
 
-                connection.Closed += _ => {
-                    des.Dispose();
-                    return Task.CompletedTask;
-                };
+                    connection.Closed += _ => {
+                        des.Dispose();
+                        return Task.CompletedTask;
+                    };
 
-                await connection.StartAsync();
-            } catch (Exception) {
-                // ignored
+                    await connection.StartAsync();
+                    await keyExchangeTask.Task;
+                    while (true) {
+                        Console.Write("Input message: ");
+                        var message          = Console.ReadLine()!;
+                        var encryptedMessage = des.EncryptEcb(Encoding.Default.GetBytes(message), PaddingMode.Zeros);
+                        await connection.InvokeAsync("SendMessage", encryptedMessage);
+                    }
+                } catch (Exception) {
+                    // ignored
+                }
             }
-
-            await appTask;
         }
     }
 }

@@ -13,7 +13,6 @@ namespace SecureChat.Hubs {
         }
 
         public override async Task OnConnectedAsync() {
-            Program.TokenSource.Cancel();
             var rsa = RSA.Create();
             SetRsa(rsa);
             var publicKey = rsa.ExportRSAPublicKey();
@@ -31,7 +30,6 @@ namespace SecureChat.Hubs {
             SetDes(des);
 
             Console.WriteLine("Key exchange successful");
-            Console.WriteLine("Press Enter, than start inputting your messages");
 
             Task.Run(async () => {
                 while (true) {
