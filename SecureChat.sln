@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SecureChat.Server", "SecureChat.Server\SecureChat.Server.csproj", "{3BAA9787-7160-463F-8180-95B937FD981D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SecureChat", "SecureChat\SecureChat.csproj", "{309AF8FD-DEAD-4F4F-9ECD-2F40E045E387}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -8,9 +8,9 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{3BAA9787-7160-463F-8180-95B937FD981D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{3BAA9787-7160-463F-8180-95B937FD981D}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{3BAA9787-7160-463F-8180-95B937FD981D}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{3BAA9787-7160-463F-8180-95B937FD981D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{309AF8FD-DEAD-4F4F-9ECD-2F40E045E387}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{309AF8FD-DEAD-4F4F-9ECD-2F40E045E387}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{309AF8FD-DEAD-4F4F-9ECD-2F40E045E387}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{309AF8FD-DEAD-4F4F-9ECD-2F40E045E387}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
