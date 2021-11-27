@@ -11,12 +11,6 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace SecureChat.Hubs {
     public class ChatHub : Hub<IChatClient> {
-        private readonly IHubContext<ChatHub, IChatClient> _context;
-
-        public ChatHub(IHubContext<ChatHub, IChatClient> context) {
-            _context = context;
-        }
-
         public override async Task OnConnectedAsync() {
             var rsa = RSA.Create();
             SetRsa(rsa);
