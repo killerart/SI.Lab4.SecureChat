@@ -76,7 +76,7 @@ namespace SecureChat {
             Console.Write("Input message: ");
         }
 
-        private static async IAsyncEnumerable<byte[]> SendMessagesStream([EnumeratorCancellation] CancellationToken ct) {
+        private static async IAsyncEnumerable<byte[]?> SendMessagesStream([EnumeratorCancellation] CancellationToken ct) {
             yield return null;
             while (!ct.IsCancellationRequested) {
                 Console.Write("Input message: ");

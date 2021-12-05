@@ -30,10 +30,14 @@ namespace SecureChat.Hubs {
             Console.WriteLine("Key exchange successful");
         }
 
-        public async Task SendMessages(IAsyncEnumerable<byte[]> messageStream) {
+        public async Task SendMessages(IAsyncEnumerable<byte[]?> messageStream) {
             var des = GetDes();
             try {
                 await foreach (var encryptedMessage in messageStream.Skip(1)) {
+                    if (encryptedMessage is null) {
+                        continue;
+                    }
+
                     var messageBytes = des.DecryptEcb(encryptedMessage, PaddingMode.None);
                     var message      = Encoding.Default.GetString(messageBytes);
                     Console.Write("\nMessage received: ");
